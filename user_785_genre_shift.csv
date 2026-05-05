@@ -1,0 +1,46 @@
+genre,profile,before,after,delta,profile_pct,before_pct,after_pct
+Drama,17,5,3,-2,18.5,29.4,30.0
+Comedy,12,0,1,1,13.0,0.0,10.0
+Drama Romance,10,0,0,0,10.9,0.0,0.0
+Western,3,0,0,0,3.3,0.0,0.0
+Comedy Drama,3,1,0,-1,3.3,5.9,0.0
+Action Adventure,3,1,1,0,3.3,5.9,10.0
+Comedy Romance,3,1,1,0,3.3,5.9,10.0
+War,2,0,0,0,2.2,0.0,0.0
+Action Comedy,2,0,0,0,2.2,0.0,0.0
+Documentary,2,0,0,0,2.2,0.0,0.0
+Horror,2,1,0,-1,2.2,5.9,0.0
+Animation Children's Comedy,2,1,0,-1,2.2,5.9,0.0
+Comedy Sci-Fi,2,0,0,0,2.2,0.0,0.0
+Thriller,2,0,1,1,2.2,0.0,10.0
+Crime Drama Thriller,2,0,0,0,2.2,0.0,0.0
+Action Thriller,2,0,0,0,2.2,0.0,0.0
+Action Adventure Thriller,1,0,0,0,1.1,0.0,0.0
+Drama War,1,0,0,0,1.1,0.0,0.0
+Animation Children's Comedy Musical,1,0,0,0,1.1,0.0,0.0
+Action Adventure Horror,1,0,0,0,1.1,0.0,0.0
+Crime Thriller,1,0,0,0,1.1,0.0,0.0
+Adventure Children's Drama,1,0,0,0,1.1,0.0,0.0
+Drama Sci-Fi,1,0,0,0,1.1,0.0,0.0
+Action,1,2,0,-2,1.1,11.8,0.0
+Adventure Children's,1,0,1,1,1.1,0.0,10.0
+Action Horror Sci-Fi Thriller,1,0,0,0,1.1,0.0,0.0
+Crime Film-Noir Mystery Thriller,1,0,0,0,1.1,0.0,0.0
+Adventure Children's Fantasy Sci-Fi,1,0,0,0,1.1,0.0,0.0
+Comedy Fantasy,1,0,0,0,1.1,0.0,0.0
+Action Adventure Sci-Fi,1,0,0,0,1.1,0.0,0.0
+Comedy Romance Thriller,1,0,0,0,1.1,0.0,0.0
+Adventure Children's Fantasy,1,0,0,0,1.1,0.0,0.0
+Romance,1,0,0,0,1.1,0.0,0.0
+Comedy Musical,1,0,0,0,1.1,0.0,0.0
+Children's Comedy,1,0,0,0,1.1,0.0,0.0
+Children's Drama,1,0,0,0,1.1,0.0,0.0
+Mystery,1,0,0,0,1.1,0.0,0.0
+Horror Sci-Fi,1,0,1,1,1.1,0.0,10.0
+Drama Mystery,1,0,0,0,1.1,0.0,0.0
+Animation Children's Musical,0,1,0,-1,0.0,5.9,0.0
+Film-Noir Romance Thriller,0,1,0,-1,0.0,5.9,0.0
+Adventure Drama,0,1,0,-1,0.0,5.9,0.0
+Mystery Romance Thriller,0,1,0,-1,0.0,5.9,0.0
+Mystery Thriller,0,1,0,-1,0.0,5.9,0.0
+Adventure War,0,0,1,1,0.0,0.0,10.0

@@ -247,7 +247,10 @@ def load_data_and_model(model_file):
     """
     import torch
 
-    checkpoint = torch.load(model_file)
+    #checkpoint = torch.load(model_file)
+    #checkpoint = torch.load(model_file, weights_only=False)
+    checkpoint = torch.load(model_file, weights_only=False, map_location=torch.device('cpu'))
+
     config = checkpoint["config"]
     init_seed(config["seed"], config["reproducibility"])
     init_logger(config)

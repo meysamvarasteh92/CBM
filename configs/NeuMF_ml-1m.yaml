@@ -1,0 +1,64 @@
+# configs/neumf_ml1m.yaml
+
+# Dataset
+dataset: ml-1m
+data_path: dataset/
+save_dataset: True
+
+# Field definitions
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+RATING_FIELD: rating
+TIME_FIELD: timestamp
+
+# Columns to load
+load_col:
+  inter: [user_id, item_id, rating, timestamp]
+  item: [item_id, title, year, genre]
+  user: [user_id, gender, age, occupation]
+
+# Convert ratings to implicit feedback
+threshold:
+  rating: 3
+LABEL_FIELD: label
+
+# Data splitting
+eval_args:
+  split: {RS: [0.8, 0.1, 0.1]}
+  group_by: user
+  order: RO
+  mode: uni100
+
+# Negative sampling
+train_neg_sample_args:
+  distribution: uniform
+  sample_num: 1
+
+# NeuMF model parameters
+mf_embedding_size: 64
+mlp_embedding_size: 64
+mlp_hidden_size: [128, 64, 32, 16]
+dropout_prob: 0.1
+
+# Training
+epochs: 50
+train_batch_size: 512
+learning_rate: 0.001
+optimizer: adam
+weight_decay: 0.0001
+
+# Evaluation
+eval_batch_size: 4096
+metrics: [Recall, NDCG, Precision, Hit]
+topk: [10, 20]
+valid_metric: NDCG@10
+
+# Filter users and items with fewer than 10 interactions
+user_inter_num_interval: "[10,inf)"
+item_inter_num_interval: "[10,inf)"
+
+# Misc
+seed: 42
+reproducibility: True
+show_progress: False
+save_dataloaders: False

@@ -1,0 +1,25 @@
+# Dataset
+dataset: ml-1m
+data_path: dataset/
+
+# Item features to load
+load_col:
+  inter: [user_id, item_id, rating, timestamp]
+  item: [item_id, title, year, genre]
+  user: [user_id, age, gender, occupation]
+
+# Field types
+USER_ID_FIELD: user_id
+ITEM_ID_FIELD: item_id
+RATING_FIELD: rating
+TIME_FIELD: timestamp
+
+# Model
+embedding_size: 64
+epochs: 50
+learning_rate: 0.001
+
+# Threshold for implicit feedback
+threshold:
+  rating: 3
+interactoin_type: unidirectional

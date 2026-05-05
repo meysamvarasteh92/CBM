@@ -1,0 +1,4 @@
+metric,before,after,delta
+unique_items_recommended,2425.0,2168.0,-257.0
+item_coverage_%,70.99,63.47,-7.519999999999996
+gini,0.6385,0.6736,0.03510000000000002

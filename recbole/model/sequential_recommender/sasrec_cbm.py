@@ -33,8 +33,13 @@ class SASRec_CBM(SASRec):
        # ── Read CBM hyperparameters ─────────────────────────────────────────
         self.lambda_concept    = config['lambda_concept']    if 'lambda_concept'    in config.final_config_dict else 1.0
         self.lambda_recon      = config['lambda_recon']      if 'lambda_recon'      in config.final_config_dict else 0.5
+        
+        
         self.steer_concept_idx = config['steer_concept_idx'] if 'steer_concept_idx' in config.final_config_dict else None
+        #self.steer_concept_idx2 = config['steer_concept_idx2'] if 'steer_concept_idx2' in config.final_config_dict else None
+
         self.steer_scale       = config['steer_scale']       if 'steer_scale'       in config.final_config_dict else 1.0
+        #self.steer_scale2       = config['steer_scale2']       if 'steer_scale2'       in config.final_config_dict else 1.0
 
         # ── Load (or build) the per-item concept cache ───────────────────────
         cache_path = f"./dataset/{config['dataset']}/saved_concept_individual_items.pkl"
@@ -122,6 +127,7 @@ class SASRec_CBM(SASRec):
         if self.steer_concept_idx is not None and not self.training:
             c_hat = c_hat.clone()
             c_hat[:, self.steer_concept_idx] *= self.steer_scale
+
 
         h_hat = self.reconstructor(c_hat)
         return h, c_hat, h_hat

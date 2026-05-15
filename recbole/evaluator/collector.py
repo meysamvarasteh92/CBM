@@ -75,7 +75,28 @@ class Collector(object):
         self.full = "full" in config["eval_args"]["mode"]
         self.topk = self.config["topk"]
         self.device = self.config["device"]
+    # In recbole/evaluator/collector.py, inside the Collector class
+    
+    def collect_cbm(self, model):
+        """Called by the trainer after eval is done — pulls CBM tensors out of the model."""
+        if not (self.register.need('cbm.c_hat') and self.register.need('cbm.gt_concepts')):
+            return
+        if not hasattr(model, '_eval_c_hat_buffer'):
+            return
 
+        if len(model._eval_c_hat_buffer) == 0:
+            return
+
+        c_hat = torch.cat(model._eval_c_hat_buffer, dim=0)
+        gt    = torch.cat(model._eval_gt_buffer,    dim=0)
+
+        self.data_struct.set('cbm.c_hat',       c_hat)
+        self.data_struct.set('cbm.gt_concepts', gt)
+
+        # Clear the model's buffers so the next eval starts fresh
+        model._eval_c_hat_buffer = []
+        model._eval_gt_buffer    = []
+        
     def data_collect(self, train_data):
         """Collect the evaluation resource from training data.
         Args:
@@ -196,7 +217,7 @@ class Collector(object):
             self.data_struct.update_tensor(
                 "data.label", interaction[self.label_field].to(self.device)
             )
-
+    
     def model_collect(self, model: torch.nn.Module):
         """Collect the evaluation resource from model.
         Args:

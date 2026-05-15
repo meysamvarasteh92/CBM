@@ -32,6 +32,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from recbole.evaluator.utils import _binary_clf_curve
 from recbole.evaluator.base_metric import AbstractMetric, TopkMetric, LossMetric
 from recbole.utils import EvaluatorType
+import torch
+
+
+
+
 
 # TopK Metrics
 
@@ -772,4 +777,261 @@ class TailPercentage(AbstractMetric):
         for k in self.topk:
             key = "{}@{}".format(metric, k)
             metric_dict[key] = round(avg_result[k - 1], self.decimal_place)
+        return metric_dict
+
+
+
+
+
+
+
+
+
+
+
+class ConceptAccuracySoft(AbstractMetric):
+    """
+    Top-k fractional overlap: for each user, count how many of their top-k
+    predicted concepts also appear in their top-k ground-truth concepts.
+    Score per user = matches / k. Average across users.
+
+    For k=3:
+        0 matches → 0/3 = 0.00
+        1 match   → 1/3 ≈ 0.33
+        2 matches → 2/3 ≈ 0.67
+        3 matches → 3/3 = 1.00
+    """
+    metric_type = EvaluatorType.RANKING
+    smaller = False
+    metric_need = ['cbm.c_hat', 'cbm.gt_concepts']
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.k = 3
+
+    def calculate_metric(self, dataobject):
+        c_hat = dataobject.get('cbm.c_hat')
+        gt    = dataobject.get('cbm.gt_concepts')
+        if isinstance(c_hat, torch.Tensor):
+            c_hat = c_hat.cpu().numpy()
+        if isinstance(gt, torch.Tensor):
+            gt = gt.cpu().numpy()
+
+        # Top-k indices per user
+        pred_top = np.argsort(-c_hat, axis=1)[:, :self.k]   # [B, k]
+        gt_top   = np.argsort(-gt,    axis=1)[:, :self.k]   # [B, k]
+
+        # Fractional overlap per user
+        n_users = c_hat.shape[0]
+        overlaps = np.array([
+            len(set(pred_top[i]) & set(gt_top[i])) / self.k
+            for i in range(n_users)
+        ])
+
+        return {'concept_acc_soft': round(float(overlaps.mean()), self.decimal_place)}
+
+
+class ConceptAccuracyStrict(AbstractMetric):
+    """
+    Strict concept accuracy: per-user exact-set match of top-3 predicted concepts
+    against top-3 ground-truth concepts (set equality).
+    """
+    metric_type = EvaluatorType.RANKING
+    metric_need = ['cbm.c_hat', 'cbm.gt_concepts']
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.k = 3   # number of concepts to compare
+
+    def calculate_metric(self, dataobject):
+        c_hat = dataobject.get('cbm.c_hat')
+        gt    = dataobject.get('cbm.gt_concepts')
+        if isinstance(c_hat, torch.Tensor):
+            c_hat = c_hat.cpu().numpy()
+        if isinstance(gt, torch.Tensor):
+            gt = gt.cpu().numpy()
+
+        # Top-k indices per user
+        pred_topk = np.argsort(-c_hat, axis=1)[:, :self.k]
+        gt_topk   = np.argsort(-gt,    axis=1)[:, :self.k]
+
+        # Exact set match per user
+        correct = sum(set(pred_topk[i]) == set(gt_topk[i])
+                      for i in range(c_hat.shape[0]))
+        acc = correct / c_hat.shape[0]
+        return {'concept_acc_strict': round(float(acc), self.decimal_place)}
+    
+
+
+
+
+
+class TierExposure(AbstractMetric):
+    """
+    Tier exposure: fraction of recommended items belonging to each popularity tier.
+    
+    Reads tier pools from config:
+        config['popularity_pool']  : list/set of internal item IDs (popular tier)
+        config['mid_pool']         : list/set of internal item IDs (mid tier)
+        config['niche_pool']       : list/set of internal item IDs (niche tier)
+    
+    Returns three numbers per top-k: pop_rate@k, mid_rate@k, niche_rate@k.
+    """
+    metric_type = EvaluatorType.RANKING
+    metric_need = ['rec.items', 'data.num_items']
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.topk = config['topk']
+        num_items = config.final_config_dict.get('num_items', None)   # fallback
+
+        # Pull tier pools from config; default to empty if not set
+        pop_pool   = config['popularity_pool'] if 'popularity_pool' in config.final_config_dict else None
+        mid_pool   = config['mid_pool']        if 'mid_pool'        in config.final_config_dict else None
+        niche_pool = config['niche_pool']      if 'niche_pool'      in config.final_config_dict else None
+
+        if pop_pool is None or mid_pool is None or niche_pool is None:
+            raise ValueError(
+                "TierExposure metric requires 'popularity_pool', 'mid_pool', "
+                "'niche_pool' to be set in config."
+            )
+
+        # Convert to sets (in case user passes list/tuple)
+        self.pop_pool   = set(pop_pool)
+        self.mid_pool   = set(mid_pool)
+        self.niche_pool = set(niche_pool)
+
+    def calculate_metric(self, dataobject):
+        item_matrix = dataobject.get('rec.items').numpy()
+        num_items   = dataobject.get('data.num_items')
+
+        # Build boolean masks once
+        pop_mask   = np.zeros(num_items, dtype=bool)
+        mid_mask   = np.zeros(num_items, dtype=bool)
+        niche_mask = np.zeros(num_items, dtype=bool)
+        pop_mask[list(self.pop_pool)]     = True
+        mid_mask[list(self.mid_pool)]     = True
+        niche_mask[list(self.niche_pool)] = True
+
+        metric_dict = {}
+        for k in self.topk:
+            recs = item_matrix[:, :k]
+            flat = recs.flatten()
+            flat = flat[flat != 0]    # drop padding
+
+            metric_dict[f'pop_rate@{k}']   = round(float(pop_mask[flat].mean()),   self.decimal_place)
+            metric_dict[f'mid_rate@{k}']   = round(float(mid_mask[flat].mean()),   self.decimal_place)
+            metric_dict[f'niche_rate@{k}'] = round(float(niche_mask[flat].mean()), self.decimal_place)
+
+        return metric_dict
+
+
+class GenreExposure(AbstractMetric):
+    """
+    Genre exposure: fraction of recommended items belonging to each genre.
+    
+    Reads from config:
+        config['item_to_genres'] : dict {item_id: set(genre_strings)}
+        config['genre_list']     : ordered list of genre names
+    
+    For each genre, returns the fraction of (user, slot) pairs where the
+    recommended item belongs to that genre.
+    """
+    metric_type = EvaluatorType.RANKING
+    metric_need = ['rec.items', 'data.num_items']
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.topk = config['topk']
+
+        item_to_genres = config['item_to_genres'] if 'item_to_genres' in config.final_config_dict else None
+        genre_list     = config['genre_list']     if 'genre_list'     in config.final_config_dict else None
+
+        if item_to_genres is None or genre_list is None:
+            raise ValueError(
+                "GenreExposure requires 'item_to_genres' (dict) and "
+                "'genre_list' (list) in config."
+            )
+
+        self.item_to_genres = item_to_genres
+        self.genre_list     = genre_list
+
+    def calculate_metric(self, dataobject):
+        item_matrix = dataobject.get('rec.items').numpy()
+        num_items   = dataobject.get('data.num_items')
+
+        # Build [n_items, n_genres] one-hot matrix once
+        genre_idx = {g: i for i, g in enumerate(self.genre_list)}
+        n_genres  = len(self.genre_list)
+        item_genre = np.zeros((num_items, n_genres), dtype=bool)
+        for item_id, genres in self.item_to_genres.items():
+            if 0 <= item_id < num_items:
+                for g in genres:
+                    if g in genre_idx:
+                        item_genre[item_id, genre_idx[g]] = True
+
+        metric_dict = {}
+        for k in self.topk:
+            recs = item_matrix[:, :k]
+            flat = recs.flatten()
+            flat = flat[flat != 0]
+
+            for g_name, g_idx in genre_idx.items():
+                rate = float(item_genre[flat, g_idx].mean())
+                metric_dict[f'genre_{g_name}_rate@{k}'] = round(rate, self.decimal_place)
+
+        return metric_dict
+
+
+class YearExposure(AbstractMetric):
+    """
+    Year exposure: fraction of recommended items belonging to each era.
+    
+    Reads from config:
+        config['item_to_era']    : dict {item_id: era_name in {'classic','retro','modern','contemporary'}}
+        config['era_list']       : optional ordered list of era names (default: standard four)
+    """
+    metric_type = EvaluatorType.RANKING
+    metric_need = ['rec.items', 'data.num_items']
+
+    DEFAULT_ERAS = ['classic', 'retro', 'modern', 'contemporary']
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.topk = config['topk']
+
+        item_to_era = config['item_to_era'] if 'item_to_era' in config.final_config_dict else None
+        era_list    = config['era_list']    if 'era_list'    in config.final_config_dict else self.DEFAULT_ERAS
+
+        if item_to_era is None:
+            raise ValueError("YearExposure requires 'item_to_era' (dict) in config.")
+
+        self.item_to_era = item_to_era
+        self.era_list    = era_list
+
+    def calculate_metric(self, dataobject):
+        item_matrix = dataobject.get('rec.items').numpy()
+        num_items   = dataobject.get('data.num_items')
+
+        era_idx = {e: i for i, e in enumerate(self.era_list)}
+        item_era = np.full(num_items, -1, dtype=np.int64)    # -1 = unknown
+        for item_id, era in self.item_to_era.items():
+            if 0 <= item_id < num_items and era in era_idx:
+                item_era[item_id] = era_idx[era]
+
+        metric_dict = {}
+        for k in self.topk:
+            recs = item_matrix[:, :k]
+            flat = recs.flatten()
+            flat = flat[flat != 0]
+            eras_recommended = item_era[flat]
+
+            # For each era, fraction of (non-padding) recs in that era
+            for e_name, e_idx in era_idx.items():
+                rate = float((eras_recommended == e_idx).mean())
+                metric_dict[f'era_{e_name}_rate@{k}'] = round(rate, self.decimal_place)
+
+            # Unknown era (items missing year)
+            metric_dict[f'era_unknown_rate@{k}'] = round(float((eras_recommended == -1).mean()), self.decimal_place)
+
         return metric_dict

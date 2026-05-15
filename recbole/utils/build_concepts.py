@@ -156,6 +156,8 @@ def compute_item_concepts(item_id, L):
     era = L['item_to_era'].get(item_id)
     if era in L['era_idx']:
         vec[ng + 3 + L['era_idx'][era]] = 1.0
+        #vec[ng + 0 + L['era_idx'][era]] = 1.0
+
 
     return vec
 
@@ -194,7 +196,7 @@ def seq_to_concepts(item_seq_batch, item_concepts, n_concepts, n_genres,
         n = mask.sum(dim=1).clamp(min=1)
 
         out = torch.zeros_like(summed)
-        out[:, :n_genres]                  = summed[:, :n_genres] / n
+        #out[:, :n_genres]                  = summed[:, :n_genres] / n
         out[:, n_genres:n_genres+n_tier]   = summed[:, n_genres:n_genres+n_tier] / n
 
         era_off = n_genres + n_tier
@@ -261,6 +263,8 @@ def build_cache(dataset_name, dataset):
     n_genres = len(L['genre_concepts'])
     genre_sums = item_concepts[:, :n_genres].sum(axis=1)
     era_sums   = item_concepts[:, n_genres+3:n_genres+7].sum(axis=1)
+    #era_sums   = item_concepts[:, n_genres:n_genres+4].sum(axis=1)
+
     tier_sums  = item_concepts[:, n_genres:n_genres+3].sum(axis=1)
 
     print(f"\n[build] Diagnostics — items with NO ...")

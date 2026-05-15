@@ -133,6 +133,7 @@ class SASRec_CBM(SASRec):
         return h, c_hat, h_hat
 
     # ── Training loss ────────────────────────────────────────────────────────
+    '''
     def calculate_loss(self, interaction):
         item_seq     = interaction[self.ITEM_SEQ]
         item_seq_len = interaction[self.ITEM_SEQ_LEN]
@@ -162,8 +163,47 @@ class SASRec_CBM(SASRec):
         loss_reg = (lambda_reg / (Nc * K)) * omega
         #return loss_rec + self.lambda_concept * loss_con + self.lambda_recon * loss_recon
         return  (self.lambda_concept * loss_con + self.lambda_recon * loss_recon + loss_reg )
+        '''
+    
+    def calculate_loss(self, interaction):
+        item_seq     = interaction[self.ITEM_SEQ]
+        item_seq_len = interaction[self.ITEM_SEQ_LEN]
 
+        gt_concepts = self._lookup_concepts(item_seq)
 
+        h, c_hat, h_hat = self.forward(item_seq, item_seq_len)
+
+        loss_con   = F.binary_cross_entropy(c_hat, gt_concepts)
+        loss_recon = F.mse_loss(h_hat, h.detach())
+
+        # ── Score distribution matching ──────────────────────────────────
+        # Compare how h_hat and h rank all items
+        item_embs = self.item_embedding.weight  # [n_items, hidden_size]
+
+        with torch.no_grad():
+            scores_original = h.detach() @ item_embs.T          # [B, n_items]
+            log_p_original  = F.log_softmax(scores_original, dim=-1)
+
+        scores_cbm = h_hat @ item_embs.T                        # [B, n_items]
+        log_p_cbm  = F.log_softmax(scores_cbm, dim=-1)
+
+        # KL divergence: push CBM's score distribution toward SASRec's
+        loss_distill = F.kl_div(log_p_cbm, log_p_original.exp(), reduction='batchmean')
+
+        # ── Elastic Net ──────────────────────────────────────────────────
+        W = self.reconstructor[0].weight
+        Nc = self.n_concepts
+        K  = self.hidden_size
+        elastic_alpha = 0.5
+        omega = elastic_alpha * W.abs().sum() + (1 - elastic_alpha) * (W ** 2).sum()
+        loss_reg = (0.01 / (Nc * K)) * omega
+
+        return (self.lambda_concept * loss_con
+                + self.lambda_recon * loss_recon
+                + 0.5 * loss_distill
+                + loss_reg)
+    
+       
     # ── Eval interfaces ──────────────────────────────────────────────────────
     def predict(self, interaction):
 

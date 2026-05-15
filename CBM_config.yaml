@@ -1,0 +1,68 @@
+# Inherits base SASRec config
+dataset: ml-1mm
+data_path: ./dataset
+model: SASRec_CBM
+
+# SASRec architecture (must match the base checkpoint)
+hidden_size: 128
+n_layers: 2
+n_heads: 2
+inner_size: 256
+hidden_dropout_prob: 0
+attn_dropout_prob: 0
+hidden_act: gelu
+max_seq_length: 50
+MAX_ITEM_LIST_LENGTH: 50
+loss_type: CE
+layer_norm_eps : 1e-12
+
+initializer_range: 0.02
+seed : 2020
+steer_concept_idx: null
+
+
+
+
+# CBM-specific
+base_path: saved/sasrec_ml-1m.pth   # path to your trained base SASRec
+
+
+# Steering (null during training, set at eval)
+#steer_concept_idx: null
+steer_scale: 1
+
+# Training
+epochs: 300
+train_batch_size: 2048
+learner: adam
+learning_rate: 1e-3
+stopping_step: 300
+
+# Eval
+metrics: ['Recall', 'NDCG', 'MRR', 'Hit',
+          'ItemCoverage', 'GiniIndex', 'AveragePopularity','ConceptAccuracySoft', 'ConceptAccuracyStrict']
+topk: [5, 10, 20]
+valid_metric: NDCG@10
+eval_batch_size: 4096
+eval_args:
+  split: {LS: valid_and_test}
+  order: TO
+  group_by: user
+  mode: {valid: full, test: full}
+
+# Data
+load_col:
+  inter: [user_id, item_id, rating, timestamp]
+
+
+
+train_neg_sample_args: ~      # `~` is YAML for null/None
+#train_neg_sample_args = {'distribution': 'none', 'sample_num': 'none', 'alpha': 'none', 'dynamic': False, 'candidate_num': 0}
+
+#initializer_range: 0.02
+
+#layer_norm_eps: 1.0e-12
+
+
+log_wandb: True
+wandb_project: 'CBM-project'

@@ -575,6 +575,8 @@ class Trainer(AbstractTrainer):
         Returns:
             collections.OrderedDict: eval result, key is the eval metric and value in the corresponding metric value.
         """
+        # Reset CBM buffers
+       
         if not eval_data:
             return
 
@@ -590,7 +592,9 @@ class Trainer(AbstractTrainer):
             self.logger.info(message_output)
 
         self.model.eval()
-
+        if hasattr(self.model, '_eval_c_hat_buffer'):
+            self.model._eval_c_hat_buffer = []
+            self.model._eval_gt_buffer    = []
         if isinstance(eval_data, FullSortEvalDataLoader):
             eval_func = self._full_sort_batch_eval
             if self.item_tensor is None:
@@ -623,8 +627,15 @@ class Trainer(AbstractTrainer):
                 scores, interaction, positive_u, positive_i
             )
         self.eval_collector.model_collect(self.model)
+        self.eval_collector.collect_cbm(self.model)  
+
         struct = self.eval_collector.get_data_struct()
+      
+
+
+   
         result = self.evaluator.evaluate(struct)
+
         if not self.config["single_spec"]:
             result = self._map_reduce(result, num_sample)
         self.wandblogger.log_eval_metrics(result, head="eval")

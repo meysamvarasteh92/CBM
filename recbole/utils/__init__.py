@@ -47,3 +47,12 @@ __all__ = [
     "list_to_latex",
     "WandbLogger",
 ]
+
+
+
+from recbole.utils.build_concepts import (
+    build_cache,
+    seq_to_concepts,
+    build_lookups,
+    compute_item_concepts,
+)

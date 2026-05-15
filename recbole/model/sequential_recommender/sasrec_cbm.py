@@ -141,8 +141,21 @@ class SASRec_CBM(SASRec):
         #loss_rec   = F.cross_entropy(logits, target_item)
         loss_con   = F.binary_cross_entropy(c_hat, gt_concepts)
         loss_recon = F.mse_loss(h_hat, h.detach())
+
+
+         # ── Elastic Net on reconstructor weights ─────────────────────────
+         # ── Elastic Net (exactly as in the paper) ────────────────────────
+        W = self.reconstructor[0].weight          # [128, 25]
+        Nc = self.n_concepts                      # 25
+        K  = self.hidden_size                     # 128
+
+        elastic_alpha = 0.5                       # balance L1 vs L2
+        omega = elastic_alpha * W.abs().sum() + (1 - elastic_alpha) * (W ** 2).sum()
+
+        lambda_reg = 0.01                         # overall strength
+        loss_reg = (lambda_reg / (Nc * K)) * omega
         #return loss_rec + self.lambda_concept * loss_con + self.lambda_recon * loss_recon
-        return  self.lambda_concept * loss_con + self.lambda_recon * loss_recon
+        return  (self.lambda_concept * loss_con + self.lambda_recon * loss_recon + loss_reg )
 
 
     # ── Eval interfaces ──────────────────────────────────────────────────────

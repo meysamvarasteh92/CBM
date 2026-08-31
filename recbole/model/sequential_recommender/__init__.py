@@ -30,3 +30,4 @@ from recbole.model.sequential_recommender.stamp import STAMP
 from recbole.model.sequential_recommender.transrec import TransRec
 from recbole.model.sequential_recommender.fearec import FEARec
 from recbole.model.sequential_recommender.sasrec_cbm import SASRec_CBM
+from recbole.model.sequential_recommender.SASRec_Mon_SAE import SASRec_Mon_SAE
